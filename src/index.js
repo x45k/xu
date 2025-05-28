@@ -12,69 +12,145 @@ import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
 
 const fastify = Fastify({
-	serverFactory: (handler) => {
-		return createServer()
-			.on("request", (req, res) => {
-				res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-				res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-				handler(req, res);
-			})
-			.on("upgrade", (req, socket, head) => {
-				if (req.url.endsWith("/wisp/")) wisp.routeRequest(req, socket, head);
-				else socket.end();
-			});
-	},
+  serverFactory: (handler) => {
+    return createServer()
+      .on("request", (req, res) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+        if (req.url?.startsWith("/uv/service")) {
+          res.setHeader("Service-Worker-Allowed", "/");
+          res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+          res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+        }
+
+        handler(req, res);
+      })
+      .on("upgrade", (req, socket, head) => {
+        if (req.url.endsWith("/wisp/")) wisp.routeRequest(req, socket, head);
+        else socket.end();
+      });
+  },
 });
 
 fastify.register(fastifyStatic, {
-	root: publicPath,
-	decorateReply: true,
+  root: uvPath,
+  prefix: "/uv/",
+  decorateReply: false,
+  setHeaders: (res, path) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    if (path.includes("service")) {
+      res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+      res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+    }
+  }
+});
+
+fastify.register(fastifyStatic, {
+  root: publicPath,
+  decorateReply: true,
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
 });
 
 fastify.get("/uv/uv.config.js", (req, res) => {
-	return res.sendFile("uv/uv.config.js", publicPath);
+  res.header("Access-Control-Allow-Origin", "*");
+  return res.sendFile("uv/uv.config.js", publicPath);
 });
 
 fastify.register(fastifyStatic, {
-	root: uvPath,
-	prefix: "/uv/",
-	decorateReply: false,
+  root: epoxyPath,
+  prefix: "/epoxy/",
+  decorateReply: false,
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
 });
 
 fastify.register(fastifyStatic, {
-	root: epoxyPath,
-	prefix: "/epoxy/",
-	decorateReply: false,
+  root: baremuxPath,
+  prefix: "/baremux/",
+  decorateReply: false,
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  }
 });
 
-fastify.register(fastifyStatic, {
-	root: baremuxPath,
-	prefix: "/baremux/",
-	decorateReply: false,
+fastify.get("/uv/service/:file", (req, res) => {
+  res.header("Service-Worker-Allowed", "/");
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Cross-Origin-Embedder-Policy", "unsafe-none");
+  res.header("Cross-Origin-Opener-Policy", "unsafe-none");
+  res.sendFile(join(uvPath, "service.js"));
+});
+
+// Middleware to inject navigation bar for proxied pages
+fastify.addHook('onSend', async (request, reply, payload) => {
+  // Only modify HTML responses that are being proxied
+  if (request.url.startsWith('/uv/') &&
+      reply.getHeader('content-type')?.includes('text/html')) {
+
+    const navbar = `
+    <div style="position: fixed; top: 0; left: 0; width: 100%; background: #333; color: white; padding: 10px; z-index: 9999; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <a href="/" style="color: white; text-decoration: none; margin-right: 15px;">Home</a>
+        <a href="/uv/" style="color: white; text-decoration: none; margin-right: 15px;">Proxy</a>
+      </div>
+      <div>
+        <span id="current-url" style="margin-right: 15px;">${request.url}</span>
+        <input type="text" id="nav-url" placeholder="Enter URL" style="padding: 5px; width: 300px;">
+        <button onclick="navigateToUrl()" style="padding: 5px 10px; margin-left: 5px;">Go</button>
+      </div>
+    </div>
+    <script>
+      function navigateToUrl() {
+        const url = document.getElementById('nav-url').value;
+        if (url) {
+          window.location.href = '/uv/' + (url.startsWith('http') ? url : 'https://' + url);
+        }
+      }
+
+      // Update the body margin to account for the fixed navbar
+      document.body.style.marginTop = '50px';
+
+      // Auto-focus the URL input
+      document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('nav-url').focus();
+      });
+    </script>
+    `;
+
+    // Inject the navbar at the beginning of the body
+    const modifiedPayload = payload.toString()
+      .replace(/<body[^>]*>/i, '$&' + navbar)
+      .replace(/<\/body>/i, navbar + '$&');
+
+    return modifiedPayload;
+  }
+  return payload;
 });
 
 fastify.server.on("listening", () => {
-	const address = fastify.server.address();
-
-	// by default we are listening on 0.0.0.0 (every interface)
-	// we just need to list a few
-	console.log("Listening on:");
-	console.log(`\thttp://localhost:${address.port}`);
-	console.log(`\thttp://${hostname()}:${address.port}`);
-	console.log(
-		`\thttp://${
-			address.family === "IPv6" ? `[${address.address}]` : address.address
-		}:${address.port}`
-	);
+  const address = fastify.server.address();
+  console.log("Listening on:");
+  console.log(`\thttp://localhost:${address.port}`);
+  console.log(`\thttp://${hostname()}:${address.port}`);
+  console.log(
+    `\thttp://${
+      address.family === "IPv6" ? `[${address.address}]` : address.address
+    }:${address.port}`
+  );
 });
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 function shutdown() {
-	console.log("SIGTERM signal received: closing HTTP server");
-	fastify.close();
-	process.exit(0);
+  console.log("SIGTERM signal received: closing HTTP server");
+  fastify.close();
+  process.exit(0);
 }
 
 let port = parseInt(process.env.PORT || "");
@@ -82,6 +158,9 @@ let port = parseInt(process.env.PORT || "");
 if (isNaN(port)) port = 8080;
 
 fastify.listen({
-	port: port,
-	host: "0.0.0.0",
+  port: port,
+  host: "0.0.0.0",
+}).catch(err => {
+  console.error("Server startup error:", err);
+  process.exit(1);
 });
