@@ -5,11 +5,22 @@ import wisp from "wisp-server-node";
 import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 
-// static paths
 import { publicPath } from "ultraviolet-static";
 import { uvPath } from "@titaniumnetwork-dev/ultraviolet";
 import { epoxyPath } from "@mercuryworkshop/epoxy-transport";
 import { baremuxPath } from "@mercuryworkshop/bare-mux/node";
+
+function setupGlobalErrorHandling() {
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+}
+
+setupGlobalErrorHandling()
 
 const fastify = Fastify({
   serverFactory: (handler) => {
@@ -86,9 +97,7 @@ fastify.get("/uv/service/:file", (req, res) => {
   res.sendFile(join(uvPath, "service.js"));
 });
 
-// Middleware to inject navigation bar for proxied pages
 fastify.addHook('onSend', async (request, reply, payload) => {
-  // Only modify HTML responses that are being proxied
   if (request.url.startsWith('/uv/') &&
       reply.getHeader('content-type')?.includes('text/html')) {
 
@@ -112,17 +121,14 @@ fastify.addHook('onSend', async (request, reply, payload) => {
         }
       }
 
-      // Update the body margin to account for the fixed navbar
       document.body.style.marginTop = '50px';
 
-      // Auto-focus the URL input
       document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('nav-url').focus();
       });
     </script>
     `;
 
-    // Inject the navbar at the beginning of the body
     const modifiedPayload = payload.toString()
       .replace(/<body[^>]*>/i, '$&' + navbar)
       .replace(/<\/body>/i, navbar + '$&');
