@@ -105,3 +105,40 @@ document.addEventListener('DOMContentLoaded', function() {
 		console.log('Video autoplay prevented:', error);
 	});
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+	const settingsButton = document.getElementById('settingsButton');
+	const settingsMenu = document.getElementById('settingsMenu');
+	const bgOpacitySlider = document.getElementById('bgOpacity');
+	const opacityValue = document.getElementById('opacityValue');
+	const videoBackground = document.getElementById('video-background');
+
+	const savedOpacity = localStorage.getItem('bgOpacity');
+	if (savedOpacity) {
+		videoBackground.style.opacity = savedOpacity;
+		bgOpacitySlider.value = savedOpacity;
+		opacityValue.textContent = savedOpacity;
+	}
+
+	settingsButton.addEventListener('click', function(e) {
+		e.stopPropagation();
+		settingsMenu.classList.toggle('active');
+	});
+
+	bgOpacitySlider.addEventListener('input', function() {
+		const opacity = this.value;
+		videoBackground.style.opacity = opacity;
+		opacityValue.textContent = opacity;
+		localStorage.setItem('bgOpacity', opacity);
+	});
+
+	document.addEventListener('click', function(event) {
+		if (!settingsMenu.contains(event.target) && event.target !== settingsButton) {
+			settingsMenu.classList.remove('active');
+		}
+	});
+
+	settingsMenu.addEventListener('click', function(e) {
+		e.stopPropagation();
+	});
+});

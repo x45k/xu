@@ -276,3 +276,90 @@ body {
   position: relative;
   z-index: 1;
 }
+
+.settings-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.3s ease;
+  border: none;
+  outline: none;
+}
+
+.settings-button:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: rotate(30deg);
+}
+
+.settings-button .fa-cog {
+  color: white;
+  font-size: 24px;
+  pointer-events: none;
+}
+
+.settings-menu {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 10px;
+  padding: 15px;
+  width: 250px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  transform: translateY(20px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.settings-menu.active {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.settings-menu h3 {
+  color: white;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.settings-option {
+  margin-bottom: 15px;
+}
+
+.settings-option label {
+  display: block;
+  color: white;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.settings-option input[type="range"] {
+  width: 100%;
+  height: 5px;
+  -webkit-appearance: none;
+  background: #555;
+  border-radius: 5px;
+  outline: none;
+}
+
+.settings-option input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  background: white;
+  border-radius: 50%;
+  cursor: pointer;
+}
