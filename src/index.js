@@ -98,10 +98,10 @@ fastify.get("/uv/service/:file", (req, res) => {
 });
 
 fastify.addHook('onSend', async (request, reply, payload) => {
-  if (request.url.startsWith('/uv/') &&
-      reply.getHeader('content-type')?.includes('text/html')) {
+	if (request.url.startsWith('/uv/') &&
+		reply.getHeader('content-type')?.includes('text/html')) {
 
-    const navbar = `
+		const navbar = `
     <div style="position: fixed; top: 0; left: 0; width: 100%; background: #333; color: white; padding: 10px; z-index: 9999; display: flex; justify-content: space-between; align-items: center;">
       <div>
         <a href="/" style="color: white; text-decoration: none; margin-right: 15px;">Home</a>
@@ -125,17 +125,50 @@ fastify.addHook('onSend', async (request, reply, payload) => {
 
       document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('nav-url').focus();
+        
+        // Remove target="_blank" from all links
+        document.querySelectorAll('a[target="_blank"]').forEach(link => {
+          link.removeAttribute('target');
+        });
+        
+        // Also handle links that might open in new windows via JavaScript
+        document.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', function(e) {
+            // Prevent default behavior for links with onclick handlers that open new windows
+            if (this.getAttribute('onclick') && this.getAttribute('onclick').includes('window.open')) {
+              e.preventDefault();
+              // Extract URL from the onclick handler and navigate normally
+              const onclickContent = this.getAttribute('onclick');
+              const urlMatch = onclickContent.match(/window\.open\(['"]([^'"]+)['"]/);
+              if (urlMatch && urlMatch[1]) {
+                window.location.href = urlMatch[1];
+              }
+            }
+          });
+        });
       });
     </script>
     `;
 
-    const modifiedPayload = payload.toString()
-      .replace(/<body[^>]*>/i, '$&' + navbar)
-      .replace(/<\/body>/i, navbar + '$&');
+		let modifiedPayload = payload.toString();
 
-    return modifiedPayload;
-  }
-  return payload;
+		// Remove target="_blank" attributes from all anchor tags
+		modifiedPayload = modifiedPayload.replace(/target="_blank"/gi, '');
+
+		// Remove target="_blank" with single quotes
+		modifiedPayload = modifiedPayload.replace(/target='_blank'/gi, '');
+
+		// Remove target attributes that might have different formatting
+		modifiedPayload = modifiedPayload.replace(/target\s*=\s*["']?_blank["']?/gi, '');
+
+		// Add the navbar
+		modifiedPayload = modifiedPayload
+			.replace(/<body[^>]*>/i, '$&' + navbar)
+			.replace(/<\/body>/i, navbar + '$&');
+
+		return modifiedPayload;
+	}
+	return payload;
 });
 
 fastify.server.on("listening", () => {
