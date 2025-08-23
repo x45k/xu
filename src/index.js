@@ -98,10 +98,10 @@ fastify.get("/uv/service/:file", (req, res) => {
 });
 
 fastify.addHook('onSend', async (request, reply, payload) => {
-	if (request.url.startsWith('/uv/') &&
-		reply.getHeader('content-type')?.includes('text/html')) {
+  if (request.url.startsWith('/uv/') &&
+      reply.getHeader('content-type')?.includes('text/html')) {
 
-		const navbar = `
+    const navbar = `
     <div style="position: fixed; top: 0; left: 0; width: 100%; background: #333; color: white; padding: 10px; z-index: 9999; display: flex; justify-content: space-between; align-items: center;">
       <div>
         <a href="/" style="color: white; text-decoration: none; margin-right: 15px;">Home</a>
@@ -125,42 +125,17 @@ fastify.addHook('onSend', async (request, reply, payload) => {
 
       document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('nav-url').focus();
-        
-        document.querySelectorAll('a[target="_blank"]').forEach(link => {
-          link.removeAttribute('target');
-        });
-        
-        document.querySelectorAll('a').forEach(link => {
-          link.addEventListener('click', function(e) {
-            if (this.getAttribute('onclick') && this.getAttribute('onclick').includes('window.open')) {
-              e.preventDefault();
-              const onclickContent = this.getAttribute('onclick');
-              const urlMatch = onclickContent.match(/window\.open\(['"]([^'"]+)['"]/);
-              if (urlMatch && urlMatch[1]) {
-                window.location.href = urlMatch[1];
-              }
-            }
-          });
-        });
       });
     </script>
     `;
 
-		let modifiedPayload = payload.toString();
+    const modifiedPayload = payload.toString()
+      .replace(/<body[^>]*>/i, '$&' + navbar)
+      .replace(/<\/body>/i, navbar + '$&');
 
-		modifiedPayload = modifiedPayload.replace(/target="_blank"/gi, '');
-
-		modifiedPayload = modifiedPayload.replace(/target='_blank'/gi, '');
-
-		modifiedPayload = modifiedPayload.replace(/target\s*=\s*["']?_blank["']?/gi, '');
-
-		modifiedPayload = modifiedPayload
-			.replace(/<body[^>]*>/i, '$&' + navbar)
-			.replace(/<\/body>/i, navbar + '$&');
-
-		return modifiedPayload;
-	}
-	return payload;
+    return modifiedPayload;
+  }
+  return payload;
 });
 
 fastify.server.on("listening", () => {

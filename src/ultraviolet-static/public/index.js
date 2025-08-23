@@ -75,9 +75,9 @@ form.addEventListener("submit", async (event) => {
 
 		proxyWindow = window.open(proxyUrl, '_blank');
 
-		if (!proxyWindow) {
+		/* if (!proxyWindow) {
 			throw new Error("Popup was blocked. Please allow popups for this site.");
-		}
+		} */
 	} catch (err) {
 		error.textContent = "Failed to open the URL.";
 		errorCode.textContent = err.toString();
